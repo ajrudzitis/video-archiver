@@ -25,6 +25,23 @@ func TestFormat(t *testing.T) {
 	}
 }
 
+func TestFormatShort(t *testing.T) {
+	for _, tc := range []struct {
+		in   float64
+		want string
+	}{
+		{0, "00:00.0"},
+		{61.54, "01:01.5"},
+		{3599.94, "59:59.9"},
+		{3599.96, "1:00:00"},
+		{3661.25, "1:01:01"},
+	} {
+		if got := FormatShort(tc.in); got != tc.want {
+			t.Errorf("FormatShort(%v) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestParse(t *testing.T) {
 	for _, tc := range []struct {
 		in   string

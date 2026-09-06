@@ -23,6 +23,25 @@ func Format(seconds float64) string {
 	return fmt.Sprintf("%02d:%02d.%03d", m, s, ms)
 }
 
+// FormatShort renders with tenth-of-second precision: "MM:SS.d" or
+// "H:MM:SS" for durations of an hour or more.
+func FormatShort(seconds float64) string {
+	if seconds < 0 {
+		seconds = 0
+	}
+	ds := int64(seconds*10 + 0.5)
+	h := ds / 36_000
+	ds -= h * 36_000
+	m := ds / 600
+	ds -= m * 600
+	s := ds / 10
+	ds -= s * 10
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
+	return fmt.Sprintf("%02d:%02d.%d", m, s, ds)
+}
+
 func Parse(text string) (float64, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {

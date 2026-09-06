@@ -121,3 +121,9 @@ func SanitizeTitle(title string) string {
 func OutputName(title string) string {
 	return SanitizeTitle(title) + ".mp4"
 }
+
+// DefaultOutputDir returns <source dir>/<source basename>_segments.
+func DefaultOutputDir(sourcePath string) string {
+	base := filepath.Base(sourcePath)
+	return filepath.Join(filepath.Dir(sourcePath), strings.TrimSuffix(base, filepath.Ext(base))+"_segments")
+}

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,6 +12,7 @@ import (
 	"video-archiver/internal/render"
 	"video-archiver/internal/timefmt"
 	"video-archiver/internal/ui/browser"
+	"video-archiver/internal/ui/editor"
 )
 
 type screen int
@@ -18,6 +20,7 @@ type screen int
 const (
 	screenBrowser screen = iota
 	screenEditor
+	screenJobs
 )
 
 type Config struct {
@@ -28,14 +31,18 @@ type Config struct {
 }
 
 type Model struct {
-	cfg      Config
-	width    int
-	height   int
-	screen   screen
-	browser  browser.Model
-	renderer render.Renderer
-	info     media.Info
-	status   string
+	cfg       Config
+	width     int
+	height    int
+	screen    screen
+	browser   browser.Model
+	editor    editor.Model
+	hasEditor bool
+	renderer  render.Renderer
+	status    string
+
+	jobs       []media.Job
+	jobsOutDir string
 }
 
 type probeDoneMsg struct{ info media.Info }
@@ -77,37 +84,61 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.browser.SetSize(msg.Width, msg.Height-2)
+		m.editor.SetSize(msg.Width, msg.Height)
 
 	case browser.OpenMsg:
 		m.status = "probing " + msg.Path
 		return m, m.probeCmd(msg.Path)
 
 	case probeDoneMsg:
-		m.info = msg.info
-		m.status = ""
+		m.editor = editor.New(m.cfg.Tools, m.renderer, msg.info)
+		m.editor.SetSize(m.width, m.height)
+		m.hasEditor = true
 		m.screen = screenEditor
+		m.status = ""
+		return m, m.editor.Init()
 
 	case probeErrMsg:
 		m.status = "error: " + msg.err.Error()
 
+	case editor.BackMsg:
+		m.screen = screenBrowser
+		m.browser.Load()
+
+	case editor.RunJobsMsg:
+		m.jobs = msg.Jobs
+		m.jobsOutDir = msg.OutDir
+		m.screen = screenJobs
+
 	case tea.KeyMsg:
+		if msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
 		switch m.screen {
 		case screenBrowser:
-			switch msg.String() {
-			case "q", "ctrl+c":
+			if msg.String() == "q" {
 				return m, tea.Quit
 			}
 			var cmd tea.Cmd
 			m.browser, cmd = m.browser.Update(msg)
 			return m, cmd
 		case screenEditor:
+			var cmd tea.Cmd
+			m.editor, cmd = m.editor.Update(msg)
+			return m, cmd
+		case screenJobs:
 			switch msg.String() {
-			case "q", "ctrl+c":
+			case "q":
 				return m, tea.Quit
 			case "esc":
-				m.screen = screenBrowser
-				m.browser.Load()
+				m.screen = screenEditor
 			}
+		}
+	default:
+		if m.screen == screenEditor && m.hasEditor {
+			var cmd tea.Cmd
+			m.editor, cmd = m.editor.Update(msg)
+			return m, cmd
 		}
 	}
 	return m, nil
@@ -116,27 +147,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	switch m.screen {
 	case screenEditor:
-		return m.editorPlaceholderView()
-	default:
-		v := m.browser.View()
-		if m.status != "" {
-			v += "\n" + m.status
+		if m.hasEditor {
+			return m.editor.View()
 		}
-		return v
+	case screenJobs:
+		return m.jobsPlaceholderView()
 	}
+	v := m.browser.View()
+	if m.status != "" {
+		v += "\n" + m.status
+	}
+	if c := m.renderer.Clear(); c != "" {
+		v += "\n" + c
+	}
+	return v
 }
 
-func (m Model) editorPlaceholderView() string {
-	i := m.info
-	return fmt.Sprintf(
-		"%s\n\nduration %s · %dx%d @ %.2f fps · video %s · audio %s\n\n(editor coming soon — esc to go back, q to quit)",
-		i.Path, timefmt.Format(i.Duration), i.Width, i.Height, i.FPS, i.VideoCodec, orNone(i.AudioCodec),
-	)
-}
-
-func orNone(s string) string {
-	if s == "" {
-		return "none"
+func (m Model) jobsPlaceholderView() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "run %d job(s) into %s\n\n", len(m.jobs), m.jobsOutDir)
+	for i, j := range m.jobs {
+		fmt.Fprintf(&b, "%2d. %-24s %s → %s\n", i+1, j.Title, timefmt.FormatShort(j.Start)+"–"+timefmt.FormatShort(j.End), j.Output)
 	}
-	return s
+	b.WriteString("\n(execution coming soon — esc to go back, q to quit)")
+	if c := m.renderer.Clear(); c != "" {
+		b.WriteString("\n" + c)
+	}
+	return b.String()
 }
