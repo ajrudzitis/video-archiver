@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -58,11 +57,9 @@ type Model struct {
 	errs     []string
 	progress []float64
 
-	current  int
 	state    State
 	existing []int
 	aborted  bool
-	fatal    string
 	cancel   context.CancelFunc
 
 	width  int
@@ -226,7 +223,6 @@ func (m *Model) startJob(i int) {
 		m.startNext()
 		return
 	}
-	m.current = i
 	m.states[i] = JobRunning
 	job := m.jobs[i]
 	ctx, cancel := context.WithCancel(context.Background())
@@ -280,5 +276,3 @@ func (m Model) Counts() (done, failed, skipped int) {
 	}
 	return
 }
-
-func (m Model) OutDir() string { return filepath.Clean(m.outDir) }
