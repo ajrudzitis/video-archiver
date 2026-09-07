@@ -49,7 +49,10 @@ func TestParse(t *testing.T) {
 	}{
 		{"0", 0},
 		{"12.5", 12.5},
+		{"89.9", 89.9},
+		{"3661", 3661},
 		{"01:02.5", 62.5},
+		{"90:30", 5430},
 		{"1:01:01.250", 3661.25},
 		{" 02:03 ", 123},
 	} {
@@ -65,7 +68,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestParseInvalid(t *testing.T) {
-	for _, in := range []string{"", "abc", "1:2:3:4", "-1", "61", "1:60", "1:00:60", "12:"} {
+	for _, in := range []string{"", "abc", "1:2:3:4", "-1", "1:60", "1:00:60", "1:60:00", "12:"} {
 		if _, err := Parse(in); err == nil {
 			t.Errorf("Parse(%q) expected error", in)
 		}

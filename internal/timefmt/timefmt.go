@@ -75,8 +75,14 @@ func Parse(text string) (float64, error) {
 	if hours < 0 || mins < 0 || secs < 0 {
 		return 0, fmt.Errorf("negative timestamp %q", text)
 	}
-	if mins >= 60 || secs >= 60 {
-		return 0, fmt.Errorf("minutes and seconds must be below 60 in %q", text)
+	// A bare number is total seconds and may exceed 60. Otherwise only the
+	// leading component may exceed 60 (e.g. 90:30 or 2:00:00 style inputs
+	// with large leading units).
+	if len(parts) >= 2 && secs >= 60 {
+		return 0, fmt.Errorf("seconds must be below 60 in %q", text)
+	}
+	if len(parts) == 3 && mins >= 60 {
+		return 0, fmt.Errorf("minutes must be below 60 in %q", text)
 	}
 	return hours*3600 + mins*60 + secs, nil
 }

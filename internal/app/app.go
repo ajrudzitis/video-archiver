@@ -2,17 +2,15 @@ package app
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"video-archiver/internal/media"
 	"video-archiver/internal/render"
-	"video-archiver/internal/timefmt"
 	"video-archiver/internal/ui/browser"
 	"video-archiver/internal/ui/editor"
+	"video-archiver/internal/ui/jobs"
 )
 
 type screen int
@@ -28,6 +26,7 @@ type Config struct {
 	File    string
 	Preview string
 	Tools   media.Tools
+	Runtime *Runtime
 }
 
 type Model struct {
@@ -38,11 +37,10 @@ type Model struct {
 	browser   browser.Model
 	editor    editor.Model
 	hasEditor bool
+	jobsModel jobs.Model
+	hasJobs   bool
 	renderer  render.Renderer
 	status    string
-
-	jobs       []media.Job
-	jobsOutDir string
 }
 
 type probeDoneMsg struct{ info media.Info }
@@ -85,6 +83,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.browser.SetSize(msg.Width, msg.Height-2)
 		m.editor.SetSize(msg.Width, msg.Height)
+		m.jobsModel.SetSize(msg.Width, msg.Height)
 
 	case browser.OpenMsg:
 		m.status = "probing " + msg.Path
@@ -106,9 +105,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.browser.Load()
 
 	case editor.RunJobsMsg:
-		m.jobs = msg.Jobs
-		m.jobsOutDir = msg.OutDir
+		m.jobsModel = jobs.New(m.cfg.Runtime.Send, m.cfg.Tools, msg.OutDir, msg.Jobs)
+		m.jobsModel.SetSize(m.width, m.height)
+		m.hasJobs = true
 		m.screen = screenJobs
+		return m, m.jobsModel.Init()
+
+	case jobs.BackMsg:
+		m.screen = screenEditor
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -127,17 +131,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editor, cmd = m.editor.Update(msg)
 			return m, cmd
 		case screenJobs:
-			switch msg.String() {
-			case "q":
+			if msg.String() == "q" {
 				return m, tea.Quit
-			case "esc":
-				m.screen = screenEditor
 			}
+			var cmd tea.Cmd
+			m.jobsModel, cmd = m.jobsModel.Update(msg)
+			return m, cmd
 		}
 	default:
 		if m.screen == screenEditor && m.hasEditor {
 			var cmd tea.Cmd
 			m.editor, cmd = m.editor.Update(msg)
+			return m, cmd
+		}
+		if m.screen == screenJobs && m.hasJobs {
+			var cmd tea.Cmd
+			m.jobsModel, cmd = m.jobsModel.Update(msg)
 			return m, cmd
 		}
 	}
@@ -151,7 +160,9 @@ func (m Model) View() string {
 			return m.editor.View()
 		}
 	case screenJobs:
-		return m.jobsPlaceholderView()
+		if m.hasJobs {
+			return m.jobsModel.View()
+		}
 	}
 	v := m.browser.View()
 	if m.status != "" {
@@ -161,17 +172,4 @@ func (m Model) View() string {
 		v += "\n" + c
 	}
 	return v
-}
-
-func (m Model) jobsPlaceholderView() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "run %d job(s) into %s\n\n", len(m.jobs), m.jobsOutDir)
-	for i, j := range m.jobs {
-		fmt.Fprintf(&b, "%2d. %-24s %s → %s\n", i+1, j.Title, timefmt.FormatShort(j.Start)+"–"+timefmt.FormatShort(j.End), j.Output)
-	}
-	b.WriteString("\n(execution coming soon — esc to go back, q to quit)")
-	if c := m.renderer.Clear(); c != "" {
-		b.WriteString("\n" + c)
-	}
-	return b.String()
 }

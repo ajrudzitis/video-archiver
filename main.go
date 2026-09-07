@@ -41,7 +41,8 @@ func run() error {
 		return err
 	}
 
-	cfg := app.Config{Preview: *preview, Tools: tools}
+	runtime := &app.Runtime{}
+	cfg := app.Config{Preview: *preview, Tools: tools, Runtime: runtime}
 	switch flag.NArg() {
 	case 0:
 		cfg.Dir, err = os.Getwd()
@@ -65,6 +66,7 @@ func run() error {
 	}
 
 	p := tea.NewProgram(app.New(cfg), tea.WithAltScreen())
+	runtime.SetProgram(p)
 	_, err = p.Run()
 	return err
 }
