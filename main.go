@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -40,6 +43,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := media.CheckEncoders(ctx, tools); err != nil {
+		return err
+	}
 
 	runtime := &app.Runtime{}
 	cfg := app.Config{Preview: *preview, Tools: tools, Runtime: runtime}
@@ -59,6 +67,7 @@ func run() error {
 			cfg.Dir = arg
 		} else {
 			cfg.File = arg
+			cfg.Dir = filepath.Dir(arg)
 		}
 	default:
 		flag.Usage()

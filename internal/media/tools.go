@@ -1,6 +1,8 @@
 package media
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 )
@@ -20,4 +22,19 @@ func FindTools() (Tools, error) {
 		return t, fmt.Errorf("ffprobe not found on PATH (try: nix-shell -p ffmpeg)")
 	}
 	return t, nil
+}
+
+// CheckEncoders verifies that the encoders needed for splitting are
+// available in the ffmpeg build.
+func CheckEncoders(ctx context.Context, tools Tools) error {
+	out, err := exec.CommandContext(ctx, tools.FFmpeg, "-hide_banner", "-encoders").Output()
+	if err != nil {
+		return fmt.Errorf("cannot list ffmpeg encoders: %w", err)
+	}
+	for _, need := range []string{"libx264", "aac"} {
+		if !bytes.Contains(out, []byte(" "+need+" ")) {
+			return fmt.Errorf("this ffmpeg build lacks the %s encoder, which video-archiver needs for splitting", need)
+		}
+	}
+	return nil
 }

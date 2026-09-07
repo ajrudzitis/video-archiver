@@ -53,6 +53,9 @@ func (m Model) View() string {
 	if m.width == 0 || m.height == 0 {
 		return ""
 	}
+	if m.showHelp {
+		return m.helpView()
+	}
 	prevW, mainH, rightW := m.layout()
 
 	left := m.previewPane(prevW, mainH)
@@ -64,6 +67,44 @@ func (m Model) View() string {
 	b.WriteString(main + "\n")
 	b.WriteString(m.promptOrStatusLine())
 	return b.String()
+}
+
+func (m Model) helpView() string {
+	lines := []string{
+		headerStyle.Render("video-archiver help"),
+		"",
+		accentStyle.Render("transport"),
+		"  ←/→             seek ±1s",
+		"  shift+←/→, {/}  seek ±10s",
+		"  , / .           step one frame back/forward",
+		"  home / end      jump to start/end",
+		"  :               jump to timestamp",
+		"",
+		accentStyle.Render("marking"),
+		"  i               set in-point at cursor",
+		"  o               set out-point, then name the segment",
+		"",
+		accentStyle.Render("segment list (tab to focus)"),
+		"  ↑/↓             select segment",
+		"  enter           jump to segment start",
+		"  t / d           rename / delete",
+		"  I / O           set start/end at cursor",
+		"  [ ] / { }       nudge start / end by one frame",
+		"",
+		accentStyle.Render("output"),
+		"  O               set output directory",
+		"  x               run the split",
+		"  s               save sidecar now",
+		"",
+		accentStyle.Render("other"),
+		"  esc             back / close dialog",
+		"  q               quit",
+		"",
+		dimStyle.Render("segments autosave to <video>.segments.json · outputs are H.264/AAC .mp4 named after titles"),
+		dimStyle.Render("press any key to close"),
+	}
+	box := borderStyle.Render(strings.Join(lines, "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
 }
 
 func (m Model) headerLine() string {

@@ -76,7 +76,8 @@ type Model struct {
 	previewAt  float64
 	tick       int
 
-	status string
+	showHelp bool
+	status   string
 }
 
 func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
@@ -185,6 +186,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if m.showHelp {
+		m.showHelp = false
+		return m, nil
+	}
 	if m.prompt != promptNone {
 		return m.handlePromptKey(msg)
 	}
@@ -203,7 +208,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 		return m, nil
 	case "?":
-		m.status = helpText(m.focus)
+		m.showHelp = true
 		return m, nil
 	}
 	if m.focus == focusList {
@@ -541,5 +546,5 @@ func helpText(f focusArea) string {
 	if f == focusList {
 		return "↑/↓ select · enter jump · t rename · d delete · I/O set start/end at cursor · [/] nudge start · {/} nudge end · tab transport"
 	}
-	return "←/→ ±1s · {/} or shift+←/→ ±10s · ,/. frame · i in · o out+title · : jump · O output dir · tab segments · x run · s save"
+	return "←/→ ±1s · {/} or shift+←/→ ±10s · ,/. frame · i in · o out+title · : jump · O output dir · tab segments · x run · s save · ? help"
 }
