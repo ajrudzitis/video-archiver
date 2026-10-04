@@ -72,7 +72,7 @@ Browser:
 | `g` / `G`, `home` / `end` | first / last entry |
 | `pgup` / `pgdown` | page |
 | `r` | reload directory |
-| `q` | quit |
+| `q` | quit (confirm) |
 
 Editor (transport focus):
 

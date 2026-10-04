@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"video-archiver/internal/media"
 	"video-archiver/internal/render"
@@ -41,7 +42,14 @@ type Model struct {
 	hasJobs   bool
 	renderer  render.Renderer
 	status    string
+
+	confirmQuit bool
 }
+
+var (
+	confirmQuitStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
+	confirmQuitText  = confirmQuitStyle.Render("quit? press y to confirm, any other key to cancel")
+)
 
 type probeDoneMsg struct{ info media.Info }
 type probeErrMsg struct{ err error }
@@ -95,6 +103,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.hasEditor = true
 		m.screen = screenEditor
 		m.status = ""
+		m.confirmQuit = false
 		return m, m.editor.Init()
 
 	case probeErrMsg:
@@ -102,6 +111,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editor.BackMsg:
 		m.screen = screenBrowser
+		m.confirmQuit = false
 		m.browser.Load()
 
 	case editor.RunJobsMsg:
@@ -109,12 +119,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.jobsModel.SetSize(m.width, m.height)
 		m.hasJobs = true
 		m.screen = screenJobs
+		m.confirmQuit = false
 		return m, m.jobsModel.Init()
 
 	case jobs.BackMsg:
 		m.screen = screenEditor
+		m.confirmQuit = false
 
 	case tea.KeyMsg:
+		if m.confirmQuit {
+			m.confirmQuit = false
+			if msg.String() == "y" {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		if msg.String() == "ctrl+c" {
 			if m.screen == screenJobs && m.jobsModel.Busy() {
 				return m, nil // esc cancels cleanly instead of orphaning ffmpeg
@@ -124,7 +143,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.screen {
 		case screenBrowser:
 			if msg.String() == "q" {
-				return m, tea.Quit
+				m.confirmQuit = true
+				return m, nil
 			}
 			var cmd tea.Cmd
 			m.browser, cmd = m.browser.Update(msg)
@@ -138,7 +158,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.jobsModel.Busy() {
 					return m, nil // esc cancels the run cleanly
 				}
-				return m, tea.Quit
+				m.confirmQuit = true
+				return m, nil
 			}
 			var cmd tea.Cmd
 			m.jobsModel, cmd = m.jobsModel.Update(msg)
@@ -167,10 +188,17 @@ func (m Model) View() string {
 		}
 	case screenJobs:
 		if m.hasJobs {
-			return m.jobsModel.View()
+			v := m.jobsModel.View()
+			if m.confirmQuit {
+				v += "\n" + confirmQuitText
+			}
+			return v
 		}
 	}
 	v := m.browser.View()
+	if m.confirmQuit {
+		v += "\n" + confirmQuitText
+	}
 	if m.status != "" {
 		v += "\n" + m.status
 	}
