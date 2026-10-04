@@ -78,9 +78,10 @@ type Model struct {
 	previewAt  float64
 	tick       int
 
-	showHelp bool
-	status   string
-	warning  string
+	showHelp    bool
+	confirmQuit bool
+	status      string
+	warning     string
 }
 
 func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
@@ -230,6 +231,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if m.confirmQuit {
+		if msg.String() == "y" {
+			return m, tea.Quit
+		}
+		m.confirmQuit = false
+		return m, nil
+	}
 	if m.showHelp {
 		m.showHelp = false
 		return m, nil
@@ -239,7 +247,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	switch msg.String() {
 	case "q":
-		return m, tea.Quit
+		m.confirmQuit = true
+		return m, nil
 	case "esc":
 		if m.focus == focusList {
 			m.focus = focusTransport

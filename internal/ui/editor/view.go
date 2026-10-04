@@ -99,7 +99,7 @@ func (m Model) helpView() string {
 		"",
 		accentStyle.Render("other"),
 		"  esc             back / close dialog",
-		"  q               quit",
+		"  q               quit (confirm)",
 		"",
 		dimStyle.Render("segments autosave to <video>.segments.json · outputs are H.264/AAC .mp4 named after titles"),
 		dimStyle.Render("press any key to close"),
@@ -230,6 +230,9 @@ func (m Model) segmentRows(w, maxRows int) []string {
 func (m Model) promptOrStatusLine() string {
 	if m.prompt != promptNone {
 		return m.input.View()
+	}
+	if m.confirmQuit {
+		return warnStyle.Render("quit? press y to confirm, any other key to cancel")
 	}
 	if m.status != "" {
 		return statusStyle.Render(truncate(m.status, max(0, m.width)))

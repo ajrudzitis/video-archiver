@@ -101,3 +101,39 @@ func TestBackupSidecarUnique(t *testing.T) {
 		t.Errorf("backup should exist: %v", err)
 	}
 }
+
+func key(s string) tea.KeyMsg {
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+}
+
+func TestQuitRequiresConfirmation(t *testing.T) {
+	m := New(media.Tools{}, render.New(render.KindNone), media.Info{Path: "/movie.mp4", Duration: 100})
+
+	// First q only arms the confirmation; it must not quit.
+	armed, cmd := m.Update(key("q"))
+	if cmd != nil {
+		t.Fatal("first q should prompt, not quit")
+	}
+	if !armed.confirmQuit {
+		t.Fatal("expected confirmation flag after q")
+	}
+
+	// y confirms and quits.
+	_, cmd = armed.Update(key("y"))
+	if cmd == nil {
+		t.Fatal("y should quit")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Errorf("y produced %T, want tea.QuitMsg", cmd())
+	}
+
+	// Any other key cancels without quitting.
+	armed, _ = m.Update(key("q"))
+	after, cmd := armed.Update(key("n"))
+	if cmd != nil {
+		t.Error("n should cancel, not quit")
+	}
+	if after.confirmQuit {
+		t.Error("confirmation flag should be cleared after cancel")
+	}
+}

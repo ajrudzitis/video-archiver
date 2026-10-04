@@ -90,7 +90,7 @@ Editor (transport focus):
 | `tab` | focus segment list |
 | `?` | help overlay |
 | `esc` | back to browser |
-| `q` | quit |
+| `q` | quit (confirm) |
 
 Editor (segment list focus):
 
