@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -52,5 +53,51 @@ func TestNewWarnsOnInvalidSegments(t *testing.T) {
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
 	if cmd != nil {
 		t.Error("run should be refused while segments are invalid")
+	}
+}
+
+func TestNewBacksUpMalformedSidecar(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "movie.mp4")
+	sidecar := segments.SidecarPath(src)
+	if err := os.WriteFile(sidecar, []byte("{ not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m := New(media.Tools{}, render.New(render.KindNone), media.Info{Path: src, Duration: 100})
+
+	if m.warning == "" {
+		t.Error("expected a warning for a malformed sidecar")
+	}
+	if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
+		t.Error("malformed sidecar should have been moved aside")
+	}
+	if _, err := os.Stat(sidecar + ".corrupt"); err != nil {
+		t.Errorf("expected backup at %s.corrupt: %v", sidecar, err)
+	}
+	if len(m.file.Segments) != 0 {
+		t.Error("expected no segments after backing up a malformed sidecar")
+	}
+}
+
+func TestBackupSidecarUnique(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "movie.mp4.segments.json")
+	if err := os.WriteFile(path, []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path+".corrupt", []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	backup, err := backupSidecar(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if backup == path+".corrupt" {
+		t.Error("should not overwrite an existing backup")
+	}
+	if _, err := os.Stat(backup); err != nil {
+		t.Errorf("backup should exist: %v", err)
 	}
 }

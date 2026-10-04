@@ -2,7 +2,9 @@ package editor
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -84,7 +86,20 @@ type Model struct {
 func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
 	sidecar := segments.SidecarPath(info.Path)
 	file, err := segments.Load(sidecar)
-	if err != nil || file == nil {
+	var warning string
+	switch {
+	case err == nil:
+		// loaded successfully
+	case errors.Is(err, os.ErrNotExist):
+		file = &segments.File{Source: filepath.Base(info.Path)}
+	default:
+		// Exists but can't be parsed: back it up so autosave can't silently
+		// destroy the user's data, then start fresh.
+		if backup, backupErr := backupSidecar(sidecar); backupErr == nil {
+			warning = "sidecar could not be parsed; original moved to " + backup
+		} else {
+			warning = "sidecar could not be parsed and could not be backed up: " + err.Error()
+		}
 		file = &segments.File{Source: filepath.Base(info.Path)}
 	}
 	file.Duration = info.Duration
@@ -92,9 +107,11 @@ func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
 		file.OutputDir = segments.DefaultOutputDir(info.Path)
 	}
 
-	var warning string
 	if err := file.Validate(); err != nil {
-		warning = "segments need attention: " + err.Error()
+		if warning != "" {
+			warning += "; "
+		}
+		warning += "segments need attention: " + err.Error()
 	}
 
 	ti := textinput.New()
@@ -113,6 +130,26 @@ func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
 		m.sel = 0
 	}
 	return m
+}
+
+// backupSidecar renames a malformed sidecar file aside so the user's data is
+// preserved before the editor starts writing a fresh one. It returns the
+// backup path.
+func backupSidecar(path string) (string, error) {
+	backup := path + ".corrupt"
+	if _, err := os.Stat(backup); err == nil {
+		for i := 1; ; i++ {
+			candidate := fmt.Sprintf("%s.corrupt.%d", path, i)
+			if _, err := os.Stat(candidate); os.IsNotExist(err) {
+				backup = candidate
+				break
+			}
+		}
+	}
+	if err := os.Rename(path, backup); err != nil {
+		return "", err
+	}
+	return backup, nil
 }
 
 func (m Model) Init() tea.Cmd {
