@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -46,6 +47,10 @@ type jobDoneMsg struct {
 }
 
 type SendFunc func(tea.Msg)
+
+// errCancelled is sent by the encoder goroutine when its context is cancelled
+// (the user aborted the run), as distinct from a genuine encode failure.
+var errCancelled = errors.New("cancelled")
 
 type Model struct {
 	send   SendFunc
@@ -122,9 +127,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		if msg.err != nil {
-			m.states[i] = JobFailed
-			m.errs[i] = msg.err.Error()
 			os.Remove(m.jobs[i].Output)
+			if errors.Is(msg.err, errCancelled) {
+				// The user cancelled this job, not a real failure.
+				m.states[i] = JobSkipped
+			} else {
+				m.states[i] = JobFailed
+				m.errs[i] = msg.err.Error()
+			}
 			if m.aborted {
 				m.finish()
 				return m, nil
@@ -255,10 +265,12 @@ func (m *Model) startJob(i int) {
 			}
 		}
 		if err := cmd.Wait(); err != nil {
-			detail := strings.TrimSpace(errBuf.String())
 			if ctx.Err() != nil {
-				detail = "cancelled"
-			} else if detail == "" {
+				send(jobDoneMsg{i, errCancelled})
+				return
+			}
+			detail := strings.TrimSpace(errBuf.String())
+			if detail == "" {
 				detail = err.Error()
 			}
 			send(jobDoneMsg{i, fmt.Errorf("%s", detail)})

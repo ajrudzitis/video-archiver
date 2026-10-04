@@ -88,6 +88,35 @@ func TestConfirmSkipExisting(t *testing.T) {
 	}
 }
 
+func TestCancelMarksSkipped(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "a.mp4")
+	if err := os.WriteFile(out, []byte("partial"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ch := make(chan tea.Msg, 8)
+	m := New(fakeSend(ch), media.Tools{FFmpeg: "/bin/false", FFprobe: "/bin/false"}, dir,
+		[]media.Job{{Source: "/src", Output: out, Start: 0, End: 1}})
+	m.aborted = true
+	m.states[0] = JobRunning
+
+	m, _ = m.Update(jobDoneMsg{job: 0, err: errCancelled})
+
+	if m.states[0] != JobSkipped {
+		t.Errorf("cancelled job = %v, want JobSkipped", m.states[0])
+	}
+	if m.state != StateDone {
+		t.Errorf("state = %v, want StateDone", m.state)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Error("partial output should be removed on cancel")
+	}
+	done, failed, skipped := m.Counts()
+	if done != 0 || failed != 0 || skipped != 1 {
+		t.Errorf("counts = %d/%d/%d, want 0/0/1", done, failed, skipped)
+	}
+}
+
 func TestConfirmCancel(t *testing.T) {
 	ch := make(chan tea.Msg, 8)
 	outDir := t.TempDir()
