@@ -97,6 +97,11 @@ func (m *Model) SetSize(width, height int) {
 	m.height = height
 }
 
+// Busy reports whether a run is in progress. While busy, quitting the app
+// would orphan the running ffmpeg process and leave a partial output file, so
+// callers must cancel via abort() instead.
+func (m Model) Busy() bool { return m.state == StateRunning }
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case beginMsg:

@@ -116,6 +116,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
+			if m.screen == screenJobs && m.jobsModel.Busy() {
+				return m, nil // esc cancels cleanly instead of orphaning ffmpeg
+			}
 			return m, tea.Quit
 		}
 		switch m.screen {
@@ -132,6 +135,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case screenJobs:
 			if msg.String() == "q" {
+				if m.jobsModel.Busy() {
+					return m, nil // esc cancels the run cleanly
+				}
 				return m, tea.Quit
 			}
 			var cmd tea.Cmd
