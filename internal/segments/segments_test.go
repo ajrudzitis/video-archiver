@@ -58,6 +58,24 @@ func TestLoadMissing(t *testing.T) {
 	}
 }
 
+func TestValidate(t *testing.T) {
+	good := &File{Segments: []Segment{{0, 10, "a"}, {20, 30, "b"}}}
+	if err := good.Validate(); err != nil {
+		t.Errorf("valid segments rejected: %v", err)
+	}
+	for _, f := range []*File{
+		{Segments: []Segment{{10, 5, "a"}}},             // end before start
+		{Segments: []Segment{{-1, 5, "a"}}},             // negative start
+		{Segments: []Segment{{0, 5, ""}}},               // empty title
+		{Segments: []Segment{{0, 5, "..."}}},            // empty after sanitizing
+		{Segments: []Segment{{0, 5, "A"}, {6, 9, "a"}}}, // duplicate output name
+	} {
+		if err := f.Validate(); err == nil {
+			t.Errorf("expected error for %+v", f.Segments)
+		}
+	}
+}
+
 func TestSorted(t *testing.T) {
 	f := &File{Segments: []Segment{{30, 40, "b"}, {0, 10, "a"}, {15, 20, "c"}}}
 	got := f.Sorted()

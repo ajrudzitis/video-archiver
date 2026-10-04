@@ -86,6 +86,29 @@ func (f *File) Sorted() []Segment {
 	return out
 }
 
+// Validate checks every segment for validity and for uniqueness of the output
+// filenames they would produce. It reports the first problem found, so a
+// hand-edited or corrupted sidecar can't reach ffmpeg with zero/negative
+// durations or colliding outputs.
+func (f *File) Validate() error {
+	seen := make(map[string]int, len(f.Segments))
+	for i, s := range f.Segments {
+		if err := s.Valid(); err != nil {
+			return fmt.Errorf("segment %d (%q): %w", i+1, s.Title, err)
+		}
+		name := SanitizeTitle(s.Title)
+		if name == "" {
+			return fmt.Errorf("segment %d has an empty title after sanitizing", i+1)
+		}
+		key := strings.ToLower(name)
+		if prev, ok := seen[key]; ok {
+			return fmt.Errorf("segments %d and %d produce the same output name %q", prev, i+1, name)
+		}
+		seen[key] = i + 1
+	}
+	return nil
+}
+
 func (f *File) HasDuplicateTitle(title string, skip int) bool {
 	for i, s := range f.Segments {
 		if i == skip {

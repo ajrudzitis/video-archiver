@@ -17,6 +17,7 @@ var (
 	markStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("213"))
 	selStyle    = lipgloss.NewStyle().Background(lipgloss.Color("237"))
 	statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	warnStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
 	borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("241"))
@@ -232,6 +233,9 @@ func (m Model) promptOrStatusLine() string {
 	}
 	if m.status != "" {
 		return statusStyle.Render(truncate(m.status, max(0, m.width)))
+	}
+	if m.warning != "" {
+		return warnStyle.Render(truncate(m.warning, max(0, m.width)))
 	}
 	return ""
 }

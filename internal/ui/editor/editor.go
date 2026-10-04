@@ -78,6 +78,7 @@ type Model struct {
 
 	showHelp bool
 	status   string
+	warning  string
 }
 
 func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
@@ -91,6 +92,11 @@ func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
 		file.OutputDir = segments.DefaultOutputDir(info.Path)
 	}
 
+	var warning string
+	if err := file.Validate(); err != nil {
+		warning = "segments need attention: " + err.Error()
+	}
+
 	ti := textinput.New()
 	ti.CharLimit = 200
 
@@ -101,6 +107,7 @@ func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
 		file:     file,
 		sidecar:  sidecar,
 		input:    ti,
+		warning:  warning,
 	}
 	if len(file.Segments) > 0 {
 		m.sel = 0
@@ -487,6 +494,10 @@ func (m Model) indexOfSorted(seg segments.Segment) int {
 func (m Model) runJobs() (Model, tea.Cmd) {
 	if len(m.file.Segments) == 0 {
 		m.status = "no segments defined"
+		return m, nil
+	}
+	if err := m.file.Validate(); err != nil {
+		m.status = "fix invalid segments first: " + err.Error()
 		return m, nil
 	}
 	outDir := m.file.OutputDir
