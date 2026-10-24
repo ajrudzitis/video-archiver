@@ -158,3 +158,21 @@ func TestSaveFailureStaysVisibleAndBlocksLeaving(t *testing.T) {
 		t.Fatal("expected successful retry and exit")
 	}
 }
+
+func TestOutputDirectoryPromptPreservesDefault(t *testing.T) {
+	m := New(media.Tools{}, render.New(render.KindNone), media.Info{Path: "videos/movie.mp4", Duration: 10})
+	original := m.file.OutputDir
+	if !filepath.IsAbs(original) {
+		t.Fatal("output directory must be absolute")
+	}
+	m.sidecar = filepath.Join(t.TempDir(), "sidecar.json")
+	m, _ = m.confirmPrompt(promptOutputDir, original)
+	if m.file.OutputDir != original {
+		t.Fatalf("changed %s to %s", original, m.file.OutputDir)
+	}
+	m, _ = m.confirmPrompt(promptOutputDir, "custom")
+	want, _ := filepath.Abs("videos/custom")
+	if m.file.OutputDir != want {
+		t.Fatalf("got %s, want %s", m.file.OutputDir, want)
+	}
+}

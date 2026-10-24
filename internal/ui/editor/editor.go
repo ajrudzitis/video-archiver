@@ -109,6 +109,10 @@ func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
 		file.OutputDir = segments.DefaultOutputDir(info.Path)
 	}
 
+	if absolute, err := filepath.Abs(file.OutputDir); err == nil {
+		file.OutputDir = absolute
+	}
+
 	if err := file.Validate(); err != nil {
 		if warning != "" {
 			warning += "; "
@@ -548,6 +552,12 @@ func (m Model) confirmPrompt(mode promptMode, value string) (Model, tea.Cmd) {
 		if !filepath.IsAbs(dir) {
 			dir = filepath.Join(filepath.Dir(m.info.Path), dir)
 		}
+		absolute, err := filepath.Abs(dir)
+		if err != nil {
+			m.status = "output dir: " + err.Error()
+			return m, nil
+		}
+		dir = absolute
 		m.file.OutputDir = dir
 		if err := m.save(); err != nil {
 			return m, nil
