@@ -3,6 +3,7 @@ package editor
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -135,5 +136,25 @@ func TestQuitRequiresConfirmation(t *testing.T) {
 	}
 	if after.confirmQuit {
 		t.Error("confirmation flag should be cleared after cancel")
+	}
+}
+
+func TestSaveFailureStaysVisibleAndBlocksLeaving(t *testing.T) {
+	m := New(media.Tools{}, render.New(render.KindNone), media.Info{Path: filepath.Join(t.TempDir(), "missing", "movie.mp4"), Duration: 10})
+	m, _ = m.Update(key("s"))
+	if !m.dirty || !strings.HasPrefix(m.status, "save error:") {
+		t.Fatalf("hidden failure: %s", m.status)
+	}
+	var cmd tea.Cmd
+	m, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd != nil {
+		t.Fatal("left editor with unsaved changes")
+	}
+	if err := os.MkdirAll(filepath.Dir(m.sidecar), 0755); err != nil {
+		t.Fatal(err)
+	}
+	m, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd == nil || m.dirty {
+		t.Fatal("expected successful retry and exit")
 	}
 }

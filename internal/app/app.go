@@ -135,6 +135,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if msg.String() == "ctrl+c" {
+			if m.screen == screenEditor {
+				var cmd tea.Cmd
+				m.editor, cmd = m.editor.Update(msg)
+				return m, cmd
+			}
 			if m.screen == screenJobs && m.jobsModel.Busy() {
 				return m, nil // esc cancels cleanly instead of orphaning ffmpeg
 			}

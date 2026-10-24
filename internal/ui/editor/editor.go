@@ -82,6 +82,7 @@ type Model struct {
 	confirmQuit bool
 	status      string
 	warning     string
+	dirty       bool
 }
 
 func New(tools media.Tools, renderer render.Renderer, info media.Info) Model {
@@ -180,10 +181,14 @@ func (m *Model) setPos(v float64) {
 	m.pos = v
 }
 
-func (m *Model) save() {
+func (m *Model) save() error {
+	m.dirty = true
 	if err := m.file.Save(m.sidecar); err != nil {
 		m.status = "save error: " + err.Error()
+		return err
 	}
+	m.dirty = false
+	return nil
 }
 
 func (m Model) sortedIndex(i int) int {
@@ -233,6 +238,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if m.confirmQuit {
 		if msg.String() == "y" {
+			if m.dirty {
+				if err := m.save(); err != nil {
+					m.confirmQuit = false
+					return m, nil
+				}
+			}
 			return m, tea.Quit
 		}
 		m.confirmQuit = false
@@ -246,6 +257,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.handlePromptKey(msg)
 	}
 	switch msg.String() {
+	case "ctrl+c":
+		if m.dirty {
+			if err := m.save(); err != nil {
+				return m, nil
+			}
+		}
+		return m, tea.Quit
 	case "q":
 		m.confirmQuit = true
 		return m, nil
@@ -253,6 +271,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.focus == focusList {
 			m.focus = focusTransport
 			return m, nil
+		}
+		if m.dirty {
+			if err := m.save(); err != nil {
+				return m, nil
+			}
 		}
 		return m, func() tea.Msg { return BackMsg{} }
 	case "tab":
@@ -307,7 +330,9 @@ func (m Model) handleTransportKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "O":
 		return m, m.startPrompt(promptOutputDir, m.file.OutputDir)
 	case "s":
-		m.save()
+		if err := m.save(); err != nil {
+			return m, nil
+		}
 		m.status = "saved " + m.sidecar
 		return m, nil
 	case "x":
@@ -339,7 +364,9 @@ func (m Model) handleListKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			removed := m.file.Segments[idx]
 			m.file.Segments = append(m.file.Segments[:idx], m.file.Segments[idx+1:]...)
 			m.sel = min(m.sel, len(m.file.Segments)-1)
-			m.save()
+			if err := m.save(); err != nil {
+				return m, nil
+			}
 			m.status = "deleted " + removed.Title
 		}
 		return m, nil
@@ -374,7 +401,9 @@ func (m Model) setSelStart(v float64) (Model, tea.Cmd) {
 	}
 	s.Start = v
 	m.file.Segments[idx] = s
-	m.save()
+	if err := m.save(); err != nil {
+		return m, nil
+	}
 	return m, nil
 }
 
@@ -393,7 +422,9 @@ func (m Model) setSelEnd(v float64) (Model, tea.Cmd) {
 	}
 	s.End = v
 	m.file.Segments[idx] = s
-	m.save()
+	if err := m.save(); err != nil {
+		return m, nil
+	}
 	return m, nil
 }
 
@@ -417,7 +448,9 @@ func (m Model) nudgeSel(start bool, delta float64) (Model, tea.Cmd) {
 		s.End = v
 	}
 	m.file.Segments[idx] = s
-	m.save()
+	if err := m.save(); err != nil {
+		return m, nil
+	}
 	return m, nil
 }
 
@@ -480,7 +513,9 @@ func (m Model) confirmPrompt(mode promptMode, value string) (Model, tea.Cmd) {
 		m.file.Segments = append(m.file.Segments, seg)
 		m.sel = m.indexOfSorted(seg)
 		m.hasIn, m.hasOut = false, false
-		m.save()
+		if err := m.save(); err != nil {
+			return m, nil
+		}
 		m.status = fmt.Sprintf("added %s (%s)", title, timefmt.Format(seg.Duration()))
 		return m, nil
 
@@ -499,7 +534,9 @@ func (m Model) confirmPrompt(mode promptMode, value string) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.file.Segments[idx].Title = title
-		m.save()
+		if err := m.save(); err != nil {
+			return m, nil
+		}
 		m.status = "renamed to " + title
 		return m, nil
 
@@ -512,7 +549,9 @@ func (m Model) confirmPrompt(mode promptMode, value string) (Model, tea.Cmd) {
 			dir = filepath.Join(filepath.Dir(m.info.Path), dir)
 		}
 		m.file.OutputDir = dir
-		m.save()
+		if err := m.save(); err != nil {
+			return m, nil
+		}
 		m.status = "output dir: " + dir
 		return m, nil
 
