@@ -1,70 +1,85 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Video Archiver: film frames in an archive tray" width="180">
+</p>
+
 # video-archiver
 
-A terminal UI for splitting digitized home movies into titled segments.
+Split digitized home movies into named clips from your terminal.
 
-Browse a directory of video files, scrub through a file with a live frame
-preview, mark in/out points, give each segment a title, and let ffmpeg
-re-encode them into individual `.mp4` files. Segment lists are saved
-alongside each video, so you can pick up where you left off.
+Browse videos, preview frames, mark clip boundaries, and export individual
+H.264/AAC MP4 files. Segment lists are saved alongside each source video so
+you can return to a project later.
 
+## Get started
+
+You need Go 1.26.5 or newer to build, plus `ffmpeg` and `ffprobe` on
+your `PATH`. Your ffmpeg build must include the `libx264` and `aac`
+encoders; the application checks for both at startup.
+
+On NixOS, open a shell with ffmpeg available:
+
+```sh
+nix-shell -p ffmpeg
 ```
-┌──────────────────────────────────────────────╮ position 00:12.360 / 01:30.000
-│                                              │ ────────●─────────────────────
-│              [frame preview]                 │
-│                                              │ in  00:10.000  out --:--
-│                                              │ segments  (2)
-│                                              │  1 00:00.0  00:10.0  grandma arrives
-└──────────────────────────────────────────────╯  2 00:10.0  00:25.0  the cake
-```
 
-## Requirements
-
-- Go 1.26+ to build
-- `ffmpeg` and `ffprobe` on `PATH`, built with `libx264` and `aac` encoders
-  (checked at startup). On NixOS: `nix-shell -p ffmpeg`
-
-## Build
+Build from the repository root, then open a directory or video:
 
 ```sh
 go build -o video-archiver .
+
+./video-archiver
+./video-archiver /path/to/videos
+./video-archiver /path/to/holiday.mp4
 ```
 
-## Usage
+### Make your first clip
 
-```
+1. Select a video with the arrow keys and press `enter`. Files with saved
+   segment lists have a diamond marker.
+2. Find the clip's start with `left` / `right` (one second at a time),
+   `,` / `.` (one frame), or `:` (jump to a timestamp). Press `i` to
+   mark the start.
+3. Move to the end boundary and press `o`. Enter a title to save the segment.
+4. Repeat for any other clips. Press `tab` to select, rename, or adjust
+   existing segments.
+5. Press `x` to export. If output files already exist, choose overwrite,
+   skip existing files, or cancel.
+
+Clips go into `<source basename>_segments/` next to the source. For example,
+`holiday.mp4` exports into `holiday_segments/`. Press `O` with transport
+focused to choose another directory. Relative paths are resolved from the
+source video's directory.
+
+Segment edits save automatically. If saving fails, the error stays visible;
+retry with `s`. Leaving the editor retries any unsaved changes and stays
+in the editor if that retry fails.
+
+## Command-line options
+
+```text
 video-archiver [dir|file] [flags]
 
-flags:
-  -preview auto|kitty|halfblock|off   frame preview renderer (default auto)
-  -version                            print version and exit
+-preview auto|kitty|halfblock|off   Preview renderer (default: auto)
+-version                          Print version and exit
 ```
 
-- With no argument, browses the current directory.
-- With a directory, browses that directory.
-- With a file, opens it directly in the editor.
+Flags work before or after the path. With no path, the browser opens the
+current directory. Use `--` before a path that starts with a dash.
 
-Preview rendering auto-detects the terminal: Kitty graphics protocol on
-Kitty/WezTerm/Ghostty, truecolor half-block character art everywhere else.
+```sh
+./video-archiver holiday.mp4 -preview halfblock
+./video-archiver -preview off /path/to/videos
+```
 
-### Workflow
+Automatic preview selection uses Kitty graphics on Kitty, WezTerm, and
+Ghostty; other terminals use truecolor half-block characters. Choose
+`-preview halfblock` or `-preview off` if needed.
 
-1. Pick a video in the browser (`↑`/`↓`, `enter`). Files with saved
-   segments are marked `◆`.
-2. Scrub to a scene (`←`/`→`, `,`/`.` for single frames, `:` to type a
-   timestamp). The preview follows the cursor.
-3. Press `i` at the first frame of the segment, `o` at the last, and type
-   a title. The segment is saved immediately.
-4. Repeat, then press `x` to split. Each segment is re-encoded to
-   H.264/AAC and written to the output directory (default:
-   `<video>_segments/` next to the source, changeable with `O`).
-5. Existing output files prompt for overwrite/skip. `esc` cancels a run
-   and kills the encoder.
+## Key reference
 
-### Key bindings
+### Browser
 
-Browser:
-
-| key | action |
+| Key | Action |
 | --- | --- |
 | `↑`/`↓`, `k`/`j` | move cursor |
 | `enter`, `l` | open file / enter directory |
@@ -74,9 +89,9 @@ Browser:
 | `r` | reload directory |
 | `q` | quit (confirm) |
 
-Editor (transport focus):
+### Editor: transport
 
-| key | action |
+| Key | Action |
 | --- | --- |
 | `←`/`→` | seek ±1s |
 | `shift+←/→`, `{`/`}` | seek ±10s |
@@ -86,15 +101,15 @@ Editor (transport focus):
 | `i` / `o` | set in-point / out-point (`o` opens the title prompt) |
 | `O` | set output directory |
 | `x` | run the split |
-| `s` | save sidecar now (autosaved anyway) |
+| `s` | retry saving the segment list |
 | `tab` | focus segment list |
 | `?` | help overlay |
 | `esc` | back to browser |
 | `q` | quit (confirm) |
 
-Editor (segment list focus):
+### Editor: segment list
 
-| key | action |
+| Key | Action |
 | --- | --- |
 | `↑`/`↓`, `k`/`j` | select segment |
 | `enter` | jump preview to segment start |
@@ -104,9 +119,9 @@ Editor (segment list focus):
 | `{` / `}` | nudge end ∓ one frame |
 | `tab`, `esc` | back to transport |
 
-Jobs:
+### Jobs
 
-| key | action |
+| Key | Action |
 | --- | --- |
 | `o` / `s` / `c` | overwrite / skip existing outputs / cancel (confirm screen) |
 | `esc` | cancel run, or back to editor when finished |
@@ -127,28 +142,39 @@ Segments are stored next to the source as `<video>.segments.json`:
 }
 ```
 
-Output file names are the sanitized segment titles plus `.mp4`
-(titles must be unique per video). Everything not covered by a segment
-is discarded.
+Output filenames are the sanitized segment titles plus `.mp4`; titles must
+be unique per video. Only the marked ranges are exported. The source video
+is preserved.
 
-## Splitting details
+Malformed JSON sidecars are moved to a unique `.corrupt` backup before the
+editor starts a fresh segment list.
 
-Each segment runs:
+## Export behavior
 
-```
-ffmpeg -ss <start> -i <source> -t <duration> -map 0:v:0 -map 0:a? \
+Each segment is re-encoded with these settings:
+
+```sh
+ffmpeg -ss <start> -i <source> -t <duration> -map 0:v:0 -map '0:a?' \
   -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 192k \
-  -movflags +faststart <title>.mp4
+  -movflags +faststart <temporary-output>.mp4
 ```
 
-Re-encoding makes cuts frame-accurate (stream-copy would snap to
-keyframes). Jobs run sequentially; progress comes from ffmpeg's
-`-progress` output. Failed or cancelled outputs are deleted so they
-don't linger as partial files.
+Re-encoding allows cuts between keyframes. Jobs run sequentially, with
+progress reported by ffmpeg. Press `esc` to cancel the run.
+
+Each clip is encoded to a temporary file in the output directory and moved
+to its final name only after encoding succeeds. Failed or cancelled jobs
+remove their temporary files and preserve existing outputs. Destinations
+that identify the source video are rejected.
 
 ## Development
 
 ```sh
-go test ./...     # unit tests; ffmpeg integration tests skip if absent
+go test ./...
+go test -race ./...
 go vet ./...
 ```
+
+Integration tests use ffmpeg to generate sample videos and check probing,
+previews, and exports. They skip when the required tools or encoders are
+unavailable.
