@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,7 +33,9 @@ func run() error {
 		fmt.Fprintf(os.Stderr, "usage: video-archiver [dir|file] [flags]\n\nflags:\n")
 		flag.PrintDefaults()
 	}
-	flag.Parse()
+	if err := parseInterspersed(flag.CommandLine, os.Args[1:]); err != nil {
+		return err
+	}
 
 	if *showVersion {
 		fmt.Println(version)
@@ -81,4 +84,38 @@ func run() error {
 	runtime.SetProgram(p)
 	_, err = p.Run()
 	return err
+}
+
+// parseInterspersed allows options before or after the positional path.
+// A bare -- ends option parsing, including for paths beginning with a dash.
+func parseInterspersed(fs *flag.FlagSet, args []string) error {
+	var options, paths []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			paths = append(paths, args[i+1:]...)
+			break
+		}
+		if arg == "-" || !strings.HasPrefix(arg, "-") {
+			paths = append(paths, arg)
+			continue
+		}
+		options = append(options, arg)
+		name, _, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		option := fs.Lookup(name)
+		if option == nil || hasValue {
+			continue
+		}
+		boolean, ok := option.Value.(interface{ IsBoolFlag() bool })
+		if ok && boolean.IsBoolFlag() {
+			continue
+		}
+		if i+1 == len(args) {
+			return fmt.Errorf("flag needs an argument: %s", arg)
+		}
+		i++
+		options = append(options, args[i])
+	}
+	options = append(options, "--")
+	return fs.Parse(append(options, paths...))
 }
