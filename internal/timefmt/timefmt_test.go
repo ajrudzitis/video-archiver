@@ -86,3 +86,11 @@ func TestRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestRejectNonfiniteTimestamps(t *testing.T) {
+	for _, value := range []string{"NaN", "Inf", "+Inf", "-Inf", "NaN:00", "00:NaN", "NaN:00:00", "1e308:00:00"} {
+		if _, err := Parse(value); err == nil {
+			t.Errorf("accepted %q", value)
+		}
+	}
+}

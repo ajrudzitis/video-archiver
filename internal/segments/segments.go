@@ -3,6 +3,7 @@ package segments
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,6 +21,9 @@ type Segment struct {
 func (s Segment) Duration() float64 { return s.End - s.Start }
 
 func (s Segment) Valid() error {
+	if math.IsNaN(s.Start) || math.IsInf(s.Start, 0) || math.IsNaN(s.End) || math.IsInf(s.End, 0) {
+		return fmt.Errorf("segment timestamps must be finite")
+	}
 	if s.Title == "" {
 		return fmt.Errorf("segment title must not be empty")
 	}

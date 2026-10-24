@@ -1,6 +1,7 @@
 package segments
 
 import (
+	"math"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -120,5 +121,19 @@ func TestSanitizeTitle(t *testing.T) {
 func TestOutputName(t *testing.T) {
 	if got := OutputName("my title"); got != "my title.mp4" {
 		t.Errorf("OutputName = %q", got)
+	}
+}
+
+func TestRejectNonfiniteBoundaries(t *testing.T) {
+	for _, value := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		for _, segment := range []Segment{{Start: value, End: 10, Title: "test"}, {Start: 0, End: value, Title: "test"}} {
+			if err := segment.Valid(); err == nil {
+				t.Errorf("accepted %+v", segment)
+			}
+			f := File{Segments: []Segment{segment}}
+			if err := f.Validate(); err == nil {
+				t.Errorf("file accepted %+v", segment)
+			}
+		}
 	}
 }

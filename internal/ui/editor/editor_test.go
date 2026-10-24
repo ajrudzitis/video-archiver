@@ -198,3 +198,12 @@ func TestEndPreviewsLastFrameAndPreservesEndpoint(t *testing.T) {
 		t.Fatal("endpoint changed")
 	}
 }
+
+func TestInvalidJumpDoesNotMoveCursor(t *testing.T) {
+	m := New(media.Tools{}, render.New(render.KindNone), media.Info{Path: filepath.Join(t.TempDir(), "movie.mp4"), Duration: 10})
+	m.pos = 2
+	m, _ = m.confirmPrompt(promptJump, "NaN")
+	if m.pos != 2 || !strings.HasPrefix(m.status, "jump:") {
+		t.Fatalf("invalid jump changed cursor: %v %s", m.pos, m.status)
+	}
+}

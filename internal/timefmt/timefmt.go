@@ -2,6 +2,7 @@ package timefmt
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -84,5 +85,9 @@ func Parse(text string) (float64, error) {
 	if len(parts) == 3 && mins >= 60 {
 		return 0, fmt.Errorf("minutes must be below 60 in %q", text)
 	}
-	return hours*3600 + mins*60 + secs, nil
+	total := hours*3600 + mins*60 + secs
+	if math.IsNaN(total) || math.IsInf(total, 0) {
+		return 0, fmt.Errorf("timestamp must be finite: %q", text)
+	}
+	return total, nil
 }
