@@ -1,6 +1,7 @@
 package browser
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	"os"
 	"path/filepath"
 	"testing"
@@ -70,5 +71,17 @@ func TestHumanSize(t *testing.T) {
 		if got := humanSize(tc.in); got != tc.want {
 			t.Errorf("humanSize(%d) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestRelativeDirectoryCanNavigateToParent(t *testing.T) {
+	m := New(".")
+	want, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	if m.dir != want {
+		t.Fatalf("got %q, want %q", m.dir, want)
 	}
 }

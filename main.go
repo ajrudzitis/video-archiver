@@ -58,7 +58,10 @@ func run() error {
 			return err
 		}
 	case 1:
-		arg := flag.Arg(0)
+		arg, err := filepath.Abs(flag.Arg(0))
+		if err != nil {
+			return err
+		}
 		st, err := os.Stat(arg)
 		if err != nil {
 			return err

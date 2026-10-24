@@ -46,6 +46,9 @@ type Model struct {
 }
 
 func New(dir string) Model {
+	if absolute, err := filepath.Abs(dir); err == nil {
+		dir = absolute
+	}
 	m := Model{dir: dir}
 	m.Load()
 	return m
