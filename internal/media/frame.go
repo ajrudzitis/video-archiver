@@ -15,7 +15,7 @@ func ExtractFrame(ctx context.Context, tools Tools, path string, at float64, wid
 	}
 	args := []string{
 		"-v", "error",
-		"-ss", strconv.FormatFloat(at, 'f', 3, 64),
+		"-ss", strconv.FormatFloat(at, 'f', 9, 64),
 		"-i", path,
 		"-frames:v", "1",
 	}

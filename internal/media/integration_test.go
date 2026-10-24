@@ -97,3 +97,43 @@ func TestIntegrationProbeFrameCut(t *testing.T) {
 		t.Errorf("cut video codec = %s", cutInfo.VideoCodec)
 	}
 }
+
+func TestIntegrationFrameStepPrecision(t *testing.T) {
+	tools := requireTools(t)
+	for _, rate := range []string{"30", "30000/1001"} {
+		t.Run(rate, func(t *testing.T) {
+			src := filepath.Join(t.TempDir(), "source.mp4")
+			cmd := exec.Command(tools.FFmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc2=duration=1:size=160x120:rate="+rate, "-c:v", "libx264", "-y", src)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%v: %s", err, out)
+			}
+			info, err := Probe(context.Background(), tools, src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			actual, err := ExtractFrame(context.Background(), tools, src, 2/info.FPS, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			expected, err := exec.Command(tools.FFmpeg, "-v", "error", "-i", src, "-vf", "select=eq(n\\,2)", "-frames:v", "1", "-f", "image2", "-c:v", "png", "pipe:1").Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(actual, expected) {
+				t.Fatal("preview did not display frame 2")
+			}
+			output := filepath.Join(t.TempDir(), "cut.mp4")
+			job := Job{Source: src, Output: output, Start: 2 / info.FPS, End: 5 / info.FPS}
+			if out, err := CutCommand(context.Background(), tools, job).CombinedOutput(); err != nil {
+				t.Fatalf("%v: %s", err, out)
+			}
+			cut, err := Probe(context.Background(), tools, output)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if delta := cut.Duration - job.Duration(); delta < -0.01 || delta > 0.01 {
+				t.Fatalf("cut duration %f, want %f", cut.Duration, job.Duration())
+			}
+		})
+	}
+}

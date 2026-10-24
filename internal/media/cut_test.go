@@ -12,9 +12,9 @@ func TestCutCommandArgs(t *testing.T) {
 	cmd := CutCommand(context.Background(), tools, j)
 	args := strings.Join(cmd.Args, " ")
 	for _, want := range []string{
-		"-ss 12.500",
+		"-ss 12.500000000",
 		"-i /in/movie.avi",
-		"-t 59.750",
+		"-t 59.750000000",
 		"-map 0:v:0",
 		"-map 0:a?",
 		"-c:v libx264",
