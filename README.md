@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/logo.png" alt="Video Archiver: film frames in an archive tray" width="180">
+  <img src="docs/snipkin-logo.png" alt="Snipkin: a friendly film-strip character beside the project name" width="460">
 </p>
 
-# video-archiver
+# Snipkin
 
 Split digitized home movies into named clips from your terminal.
 
@@ -25,11 +25,11 @@ nix-shell -p ffmpeg
 Build from the repository root, then open a directory or video:
 
 ```sh
-go build -o video-archiver .
+go build -o snipkin .
 
-./video-archiver
-./video-archiver /path/to/videos
-./video-archiver /path/to/holiday.mp4
+./snipkin
+./snipkin /path/to/videos
+./snipkin /path/to/holiday.mp4
 ```
 
 ### Make your first clip
@@ -57,7 +57,7 @@ in the editor if that retry fails.
 ## Command-line options
 
 ```text
-video-archiver [dir|file] [flags]
+snipkin [dir|file] [flags]
 
 -preview auto|kitty|halfblock|off   Preview renderer (default: auto)
 -version                          Print version and exit
@@ -67,8 +67,8 @@ Flags work before or after the path. With no path, the browser opens the
 current directory. Use `--` before a path that starts with a dash.
 
 ```sh
-./video-archiver holiday.mp4 -preview halfblock
-./video-archiver -preview off /path/to/videos
+./snipkin holiday.mp4 -preview halfblock
+./snipkin -preview off /path/to/videos
 ```
 
 Automatic preview selection uses Kitty graphics on Kitty, WezTerm, and
