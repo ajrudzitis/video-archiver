@@ -30,5 +30,8 @@ func ExtractFrame(ctx context.Context, tools Tools, path string, at float64, wid
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("ffmpeg frame: %v: %s", err, strings.TrimSpace(errBuf.String()))
 	}
+	if out.Len() == 0 {
+		return nil, fmt.Errorf("no frame available at %.9f seconds", at)
+	}
 	return out.Bytes(), nil
 }

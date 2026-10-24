@@ -639,11 +639,15 @@ func (m Model) frameCmd(tick int) tea.Cmd {
 	tools := m.tools
 	path := m.info.Path
 	at := m.pos
+	extractAt := at
+	if at >= m.info.Duration {
+		extractAt = max(0, m.info.Duration-m.frameStep())
+	}
 	width := m.previewPixelWidth()
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		data, err := media.ExtractFrame(ctx, tools, path, at, width)
+		data, err := media.ExtractFrame(ctx, tools, path, extractAt, width)
 		return frameMsg{tick: tick, at: at, data: data, err: err}
 	}
 }

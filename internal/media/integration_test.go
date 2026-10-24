@@ -137,3 +137,15 @@ func TestIntegrationFrameStepPrecision(t *testing.T) {
 		})
 	}
 }
+
+func TestIntegrationEmptyFrameIsError(t *testing.T) {
+	tools := requireTools(t)
+	src := makeTestVideo(t, tools, t.TempDir())
+	if _, err := ExtractFrame(context.Background(), tools, src, 4, 0); err == nil {
+		t.Fatal("expected error beyond final frame")
+	}
+	data, err := ExtractFrame(context.Background(), tools, src, 4-1.0/25, 0)
+	if err != nil || !bytes.HasPrefix(data, []byte("\x89PNG")) {
+		t.Fatalf("last frame: %v", err)
+	}
+}

@@ -1,7 +1,9 @@
 package editor
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -174,5 +176,25 @@ func TestOutputDirectoryPromptPreservesDefault(t *testing.T) {
 	want, _ := filepath.Abs("videos/custom")
 	if m.file.OutputDir != want {
 		t.Fatalf("got %s, want %s", m.file.OutputDir, want)
+	}
+}
+
+func TestEndPreviewsLastFrameAndPreservesEndpoint(t *testing.T) {
+	tools, err := media.FindTools()
+	if err != nil {
+		t.Skip(err)
+	}
+	src := filepath.Join(t.TempDir(), "source.mp4")
+	if out, err := exec.Command(tools.FFmpeg, "-v", "error", "-f", "lavfi", "-i", "testsrc2=duration=1:size=160x120:rate=25", "-c:v", "libx264", "-y", src).CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	m := New(tools, render.New(render.KindHalfBlock), media.Info{Path: src, Duration: 1, FPS: 25})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnd})
+	frame := m.frameCmd(m.tick)().(frameMsg)
+	if frame.err != nil || !bytes.HasPrefix(frame.data, []byte("\x89PNG")) {
+		t.Fatalf("end preview: %v", frame.err)
+	}
+	if m.pos != 1 || frame.at != 1 {
+		t.Fatal("endpoint changed")
 	}
 }
