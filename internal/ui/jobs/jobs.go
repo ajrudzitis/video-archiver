@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -127,7 +128,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		if msg.err != nil {
-			os.Remove(m.jobs[i].Output)
 			if errors.Is(msg.err, errCancelled) {
 				// The user cancelled this job, not a real failure.
 				m.states[i] = JobSkipped
@@ -246,6 +246,27 @@ func (m *Model) startJob(i int) {
 	tools := m.tools
 	go func() {
 		defer cancel()
+		sourceInfo, sourceErr := os.Stat(job.Source)
+		outputInfo, outputErr := os.Stat(job.Output)
+		sourcePath, _ := filepath.Abs(job.Source)
+		outputPath, _ := filepath.Abs(job.Output)
+		if sourcePath == outputPath || (sourceErr == nil && outputErr == nil && os.SameFile(sourceInfo, outputInfo)) {
+			send(jobDoneMsg{i, fmt.Errorf("output must not replace the source video")})
+			return
+		}
+		tmp, err := os.CreateTemp(filepath.Dir(job.Output), ".encode-*.mp4")
+		if err != nil {
+			send(jobDoneMsg{i, err})
+			return
+		}
+		tempPath := tmp.Name()
+		defer os.Remove(tempPath)
+		if err := tmp.Close(); err != nil {
+			send(jobDoneMsg{i, err})
+			return
+		}
+		destination := job.Output
+		job.Output = tempPath
 		cmd := media.CutCommand(ctx, tools, job)
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
@@ -274,6 +295,14 @@ func (m *Model) startJob(i int) {
 				detail = err.Error()
 			}
 			send(jobDoneMsg{i, fmt.Errorf("%s", detail)})
+			return
+		}
+		if ctx.Err() != nil {
+			send(jobDoneMsg{i, errCancelled})
+			return
+		}
+		if err := os.Rename(tempPath, destination); err != nil {
+			send(jobDoneMsg{i, err})
 			return
 		}
 		send(jobDoneMsg{i, nil})

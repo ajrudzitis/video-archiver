@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,8 +110,8 @@ func TestCancelMarksSkipped(t *testing.T) {
 	if m.state != StateDone {
 		t.Errorf("state = %v, want StateDone", m.state)
 	}
-	if _, err := os.Stat(out); !os.IsNotExist(err) {
-		t.Error("partial output should be removed on cancel")
+	if _, err := os.Stat(out); err != nil {
+		t.Error("existing destination should be preserved on cancel")
 	}
 	done, failed, skipped := m.Counts()
 	if done != 0 || failed != 0 || skipped != 1 {
@@ -134,5 +136,33 @@ func TestConfirmCancel(t *testing.T) {
 	got = cmd()
 	if _, ok := got.(BackMsg); !ok {
 		t.Errorf("command produced %T, want BackMsg", got)
+	}
+}
+
+func TestFailurePreservesDestination(t *testing.T) {
+	for _, collision := range []bool{false, true} {
+		t.Run(fmt.Sprint(collision), func(t *testing.T) {
+			dir := t.TempDir()
+			output := filepath.Join(dir, "movie.mp4")
+			original := []byte("original video")
+			if err := os.WriteFile(output, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			source := filepath.Join(dir, "source.mp4")
+			if collision {
+				source = output
+			}
+			ch := make(chan tea.Msg, 8)
+			m := New(fakeSend(ch), media.Tools{FFmpeg: "/nonexistent/ffmpeg"}, dir, []media.Job{{Source: source, Output: output, End: 1}})
+			m, _ = m.Update(keyMsg("o"))
+			m, _ = m.Update(waitMsg(t, ch))
+			if m.states[0] != JobFailed {
+				t.Fatal("expected failed job")
+			}
+			data, err := os.ReadFile(output)
+			if err != nil || !bytes.Equal(data, original) {
+				t.Fatalf("destination changed: %q, %v", data, err)
+			}
+		})
 	}
 }
