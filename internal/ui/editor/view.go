@@ -66,6 +66,7 @@ func (m Model) View() string {
 	var b strings.Builder
 	b.WriteString(m.headerLine() + "\n")
 	b.WriteString(main + "\n")
+	b.WriteString(dimStyle.Render(truncate(helpText(m.focus), m.width)) + "\n")
 	b.WriteString(m.promptOrStatusLine())
 	return b.String()
 }
@@ -163,11 +164,10 @@ func (m Model) rightPane(w, h int) string {
 	for _, row := range m.segmentRows(w, listRows) {
 		add(row)
 	}
-	for len(lines) < h-2 {
+	for len(lines) < h-1 {
 		add("")
 	}
 	add(dimStyle.Render("output " + truncate(m.file.OutputDir, w-7)))
-	add(dimStyle.Render(truncate(helpText(m.focus), w)))
 	return strings.Join(lines[:min(len(lines), h)], "\n")
 }
 

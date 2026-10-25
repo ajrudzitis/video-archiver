@@ -167,6 +167,9 @@ func (m *Model) SetSize(width, height int) {
 	m.height = height
 }
 
+// EditingText reports whether character keys belong to the active prompt.
+func (m Model) EditingText() bool { return m.prompt != promptNone }
+
 func (m Model) frameStep() float64 {
 	fps := m.info.FPS
 	if fps <= 0 {
@@ -654,7 +657,7 @@ func (m Model) frameCmd(tick int) tea.Cmd {
 
 func helpText(f focusArea) string {
 	if f == focusList {
-		return "↑/↓ select · enter jump · t rename · d delete · I/O set start/end at cursor · [/] nudge start · {/} nudge end · tab transport"
+		return "h help · ↑/↓ select · enter jump · t rename · d delete · I/O set start/end at cursor · [/] nudge start · {/} nudge end · tab transport"
 	}
-	return "←/→ ±1s · {/} or shift+←/→ ±10s · ,/. frame · i in · o out+title · : jump · O output dir · tab segments · x run · s save · ? help"
+	return "h help · ←/→ ±1s · {/} or shift+←/→ ±10s · ,/. frame · i in · o out+title · : jump · O output dir · tab segments · x run · s save"
 }

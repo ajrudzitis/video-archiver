@@ -29,7 +29,9 @@ func (k *kittyRenderer) RenderPNG(png []byte, cols, rows int) string {
 	var buf bytes.Buffer
 	buf.WriteString(k.Clear())
 
-	opts := fmt.Sprintf("a=T,f=100,i=%d,c=%d,r=%d", k.id, cw, ch)
+	// The view reserves the image's cells itself. Kitty's default cursor
+	// movement would advance by the image height as well, scrolling the UI.
+	opts := fmt.Sprintf("a=T,f=100,i=%d,c=%d,r=%d,C=1", k.id, cw, ch)
 	for off := 0; off < len(b64); off += kittyChunkSize {
 		end := min(off+kittyChunkSize, len(b64))
 		chunk := b64[off:end]

@@ -77,13 +77,16 @@ Ghostty; other terminals use truecolor half-block characters. Choose
 
 ## Key reference
 
+Press `h` or `?` on any screen for help. Use `↑`/`↓` to scroll and any other
+key to close. In text prompts, use `F1` for help so `h` remains available for typing.
+
 ### Browser
 
 | Key | Action |
 | --- | --- |
 | `↑`/`↓`, `k`/`j` | move cursor |
 | `enter`, `l` | open file / enter directory |
-| `backspace`, `h` | parent directory |
+| `backspace`, `←` | parent directory |
 | `g` / `G`, `home` / `end` | first / last entry |
 | `pgup` / `pgdown` | page |
 | `r` | reload directory |
@@ -103,7 +106,7 @@ Ghostty; other terminals use truecolor half-block characters. Choose
 | `x` | run the split |
 | `s` | retry saving the segment list |
 | `tab` | focus segment list |
-| `?` | help overlay |
+| `h`, `?`, `F1` | help overlay |
 | `esc` | back to browser |
 | `q` | quit (confirm) |
 

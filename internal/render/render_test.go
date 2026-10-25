@@ -86,6 +86,9 @@ func TestKittyRender(t *testing.T) {
 	if strings.Contains(out, "m=1") {
 		t.Error("small image should not be chunked")
 	}
+	if !strings.Contains(out, ",C=1;") {
+		t.Error("image placement must leave the layout's cursor position unchanged")
+	}
 }
 
 func TestKittyChunking(t *testing.T) {
@@ -111,6 +114,9 @@ func TestKittyChunking(t *testing.T) {
 	}
 	if !strings.Contains(out, ",m=1;") || !strings.Contains(out, "\x1b_Gm=1;") || !strings.Contains(out, "\x1b_Gm=0;") {
 		t.Error("expected chunked transfer with m=1 continuation and m=0 final")
+	}
+	if !strings.Contains(out, ",C=1,m=1;") {
+		t.Error("chunked image placement must disable cursor movement in the first chunk")
 	}
 }
 

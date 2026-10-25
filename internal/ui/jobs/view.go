@@ -31,6 +31,7 @@ func (m Model) View() string {
 	}
 
 	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("h help · "))
 	switch m.state {
 	case StateConfirm:
 		b.WriteString(skipStyle.Render("some output files already exist:"))

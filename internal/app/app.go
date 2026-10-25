@@ -44,6 +44,8 @@ type Model struct {
 	status    string
 
 	confirmQuit bool
+	showHelp    bool
+	helpOffset  int
 }
 
 var (
@@ -127,6 +129,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.confirmQuit = false
 
 	case tea.KeyMsg:
+		if m.showHelp {
+			switch msg.String() {
+			case "up", "k":
+				m.helpOffset = max(0, m.helpOffset-1)
+			case "down", "j":
+				m.helpOffset++
+			default:
+				m.showHelp = false
+			}
+			return m, nil
+		}
+		if msg.String() == "f1" || ((msg.String() == "h" || msg.String() == "?") &&
+			(m.screen != screenEditor || !m.editor.EditingText())) {
+			m.showHelp = true
+			m.helpOffset = 0
+			return m, nil
+		}
 		if m.confirmQuit {
 			m.confirmQuit = false
 			if msg.String() == "y" {
@@ -186,6 +205,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	v := m.view()
+	// Terminal graphics persist independently of text. Remove the preview
+	// whenever the editor is hidden, including while displaying help.
+	if m.renderer != nil && (m.showHelp || m.screen != screenEditor || !m.hasEditor) {
+		return m.renderer.Clear() + v
+	}
+	return v
+}
+
+func (m Model) view() string {
+	if m.showHelp {
+		return m.helpView()
+	}
 	switch m.screen {
 	case screenEditor:
 		if m.hasEditor {
@@ -206,9 +238,6 @@ func (m Model) View() string {
 	}
 	if m.status != "" {
 		v += "\n" + m.status
-	}
-	if c := m.renderer.Clear(); c != "" {
-		v += "\n" + c
 	}
 	return v
 }

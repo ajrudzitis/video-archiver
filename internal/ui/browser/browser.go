@@ -149,7 +149,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, func() tea.Msg { return OpenMsg{Path: path} }
-	case "backspace", "h", "left":
+	case "backspace", "left":
 		parent := filepath.Dir(m.dir)
 		if parent != m.dir {
 			m.dir = parent
@@ -219,7 +219,11 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(dimStyle.Render("↑/↓ browse · enter open · ⌫ up · r reload · q quit"))
+	help := "h help · ↑/↓ browse · enter open · ⌫ up · r reload · q quit"
+	if m.width > 0 {
+		help = lipgloss.NewStyle().MaxWidth(m.width).Render(help)
+	}
+	b.WriteString(dimStyle.Render(help))
 	return b.String()
 }
 
